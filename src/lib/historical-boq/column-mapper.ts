@@ -16,7 +16,16 @@ const HEADER_ALIASES: Record<ColumnRole, string[]> = {
   code: ["item", "item no", "itemno", "item ref", "ref", "reference", "code", "bill item", "no"],
   description: ["description", "particulars", "item description", "desc"],
   unit: ["unit", "uom", "u m", "units"],
-  quantity: ["qty", "quantity", "qnty"],
+  // "sched qty" etc.: a progress-certificate BOQ format (SANS 1200 payment
+  // certificates) has separate columns for the originally scheduled
+  // quantity vs. quantity certified to date per certificate/month — only
+  // the scheduled quantity corresponds to this pipeline's "quantity" role
+  // (the base BOQ quantity, not construction-progress tracking), confirmed
+  // against a real historical BOQ ("Book1 pe roads.xlsx") whose header was
+  // ["SCHED QTY", "CERT 01 + 2 QTY", "MONTH QTY", "CERT 03 QTY", ...] — none
+  // of which matched the plain "qty"/"quantity" aliases, so quantity never
+  // got mapped at all and every row failed validation.
+  quantity: ["qty", "quantity", "qnty", "sched qty", "scheduled qty", "scheduled quantity"],
   rate: ["rate", "unit rate", "unit price", "price", "rate r"],
   amount: ["amount", "total", "extended", "extended price", "value", "sum"],
 };

@@ -54,7 +54,14 @@ const DEFINITIVE_TEXT_PATTERNS: [
   ["section_heading", /^\s*section\s*(no\.?)?\s*\d/i],
   [
     "subtotal_total",
-    /^\s*(sub[- ]?total|total\s+(carried|brought)|carried\s+(to|forward)|brought\s+forward|(add\s+)?value\s+added\s+tax|vat\b)/i,
+    // Bare "TOTAL" (no "carried"/"brought" suffix) is also definitive —
+    // confirmed recurring across two real BOQs: Mjanyana's "TOTAL
+    // (INCLUDING VAT @ 14%)" and a BOQ REVISED CDC row whose description
+    // was literally "TOTAL" with a R35m amount, misclassified as a
+    // needs_review rate_item with unit "T" falsely read as tonnes. A real
+    // line item's description essentially never starts with the bare word
+    // "Total" — anchored at the start, so it can't match mid-sentence.
+    /^\s*(sub[- ]?total|total\b|carried\s+(to|forward)|brought\s+forward|(add\s+)?value\s+added\s+tax|vat\b)/i,
   ],
   ["note_specification", /^\s*(note|n\.?b\.?)\b[:.\s]/i],
 ];

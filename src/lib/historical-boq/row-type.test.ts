@@ -23,6 +23,13 @@ describe("matchDefinitiveRowType", () => {
     expect(matchDefinitiveRowType("PRELIMINARIES")).toBeNull();
     expect(matchDefinitiveRowType("Excavate trench for foundation")).toBeNull();
   });
+
+  it("matches a bare 'TOTAL' description, not just 'total carried/brought'", () => {
+    // Real BOQ REVISED CDC row: description "TOTAL", amount ~R35m, no
+    // "carried"/"brought" suffix.
+    expect(matchDefinitiveRowType("TOTAL")).toBe("subtotal_total");
+    expect(matchDefinitiveRowType("TOTAL (INCLUDING VAT @ 14%)")).toBe("subtotal_total");
+  });
 });
 
 describe("isDefinitiveNonRateUnit", () => {

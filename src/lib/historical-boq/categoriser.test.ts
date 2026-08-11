@@ -111,4 +111,30 @@ describe("classifyCategory", () => {
   it("classifies general earthworks fill separately from Roadworks layer terminology", () => {
     expect(classifyCategory("Selected fill material", null)).toBe("Earthworks");
   });
+
+  it("classifies profit/attendance phrasing that 'profit on'/'attendance on' alone didn't catch", () => {
+    // Real BOQ REVISED CDC / Book1 pe roads phrasing.
+    expect(classifyCategory("Overhead, charges, profit, etc. on Item 1.7.1", null)).toBe("Preliminaries & General");
+    expect(classifyCategory("Attendance and profit on Item 1.3.14", null)).toBe("Preliminaries & General");
+  });
+
+  it("classifies sanitary-ware vocabulary found in the second batch validation", () => {
+    expect(classifyCategory("Vitreous china wash hand basin", null)).toBe("Plumbing & Drainage");
+    expect(classifyCategory("Take out and remove WC pan, cistern and accessories", null)).toBe("Plumbing & Drainage");
+    expect(classifyCategory("Chromium plated bottle trap", null)).toBe("Plumbing & Drainage");
+    expect(classifyCategory("VR2-RS vandal resistant shower head", null)).toBe("Plumbing & Drainage");
+  });
+
+  it("classifies the unhyphenated 'non return valve' spelling, not just 'non-return valve'", () => {
+    expect(classifyCategory("110 mm Non return valve.", null)).toBe("Plumbing & Drainage");
+  });
+
+  it("keeps site ablution/latrine facilities under Preliminaries even though they mention plumbing fixtures", () => {
+    // Regression found when adding "wash hand basin" to Plumbing & Drainage:
+    // this real Book1 pe roads description would otherwise flip from
+    // Preliminaries & General to Plumbing & Drainage.
+    expect(classifyCategory("Ablution and latrine facilities with wash hand basins and taps", null)).toBe(
+      "Preliminaries & General",
+    );
+  });
 });

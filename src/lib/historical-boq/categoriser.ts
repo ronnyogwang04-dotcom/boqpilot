@@ -28,8 +28,24 @@ const CATEGORY_KEYWORDS: [category: string, keywords: string[]][] = [
     "allow the sum of",
     "provide the amount of",
     "technical skills and training",
-    "profit on",
+    // Bare "profit" (not just "profit on") — confirmed recurring across two
+    // real BOQs with phrasing "profit on" doesn't catch, e.g. "Overhead,
+    // charges, profit, etc. on Item 1.7.1". Safe as a bare word: "profit" is
+    // a financial/commercial term that doesn't occur in physical trade item
+    // descriptions (materials, dimensions, methods), unlike a domain word
+    // such as "fitting" or "wall".
+    "profit",
     "attendance on",
+    // Compound phrases only, not bare "ablution"/"latrine": temporary site
+    // ablution/latrine facilities for workers are a classic Preliminaries
+    // item, but a real description for one ("Ablution and latrine
+    // facilities with wash hand basins and taps") also mentions plumbing
+    // fixtures in passing — confirmed this was regressing to Plumbing &
+    // Drainage once "wash hand basin" was added there. Requiring "facilities"
+    // keeps this from colliding with a permanent building's "ablution
+    // block"/bathroom, which wouldn't be phrased this way.
+    "ablution facilities",
+    "latrine facilities",
   ]],
   ["Earthworks", ["earthwork", "excavat", "backfill", "bulk fill", "topsoil", "compaction", "selected fill"]],
   // Narrow, specific phrases only — deliberately not the bare G5/G7/C3
@@ -106,6 +122,7 @@ const CATEGORY_KEYWORDS: [category: string, keywords: string[]][] = [
     "ball valve",
     "isolating valve",
     "non-return valve",
+    "non return valve",
     "grab rail",
     "towel rail",
     "tissue dispenser",
@@ -126,6 +143,14 @@ const CATEGORY_KEYWORDS: [category: string, keywords: string[]][] = [
     "mixing valve",
     "hydroboil",
     "reticulation",
+    // Sanitary-ware vocabulary — confirmed recurring across two real BOQs
+    // (Zamukukhanya, BOQ REVISED CDC), all unambiguous plumbing-fixture
+    // terms with no plausible use outside a sanitary/plumbing context.
+    "wash hand basin",
+    "wc pan",
+    "cistern",
+    "bottle trap",
+    "shower head",
   ]],
   ["Electrical", ["electrical", "cable", "conduit", "distribution board", "luminaire", "wiring"]],
   ["Mechanical & HVAC", ["hvac", "mechanical", "ventilation", "air condition", "chiller", "duct"]],

@@ -39,4 +39,26 @@ describe("detectHeaderRow", () => {
     const rows = [["Item", "Unit", "Qty", "Rate", "Amount"]];
     expect(detectHeaderRow(rows)).toBeNull();
   });
+
+  it("maps 'SCHED QTY' to the quantity role, not the certificate-progress qty columns (real Book1 pe roads header)", () => {
+    const rows = [
+      [
+        "ITEM\r\nNO",
+        "PAYMENT",
+        "DESCRIPTION",
+        "UNIT",
+        "SCHED\r\nQTY",
+        "CERT 01 + 2\r\nQTY",
+        "MONTH\r\nQTY",
+        "CERT 03\r\nQTY",
+        "RATE",
+        "CERT 03\r\nAMOUNT",
+      ],
+    ];
+    const result = detectHeaderRow(rows);
+    expect(result?.columnMap).toMatchObject({ code: 0, description: 2, unit: 3, quantity: 4, rate: 8 });
+    // The certificate-progress qty columns and the compound "amount" header
+    // are deliberately NOT mapped — only the base scheduled quantity is.
+    expect(result?.columnMap.amount).toBeUndefined();
+  });
 });
