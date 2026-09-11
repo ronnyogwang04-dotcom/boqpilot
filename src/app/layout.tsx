@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { siteConfig } from "@/config/site";
+import { isProductionEnv } from "@/lib/env";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +21,9 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   metadataBase: new URL(siteConfig.url),
+  // Belt-and-suspenders alongside src/app/robots.ts — Beta/staging must
+  // never be indexed.
+  robots: isProductionEnv() ? undefined : { index: false, follow: false },
 };
 
 export default function RootLayout({

@@ -11,13 +11,31 @@ interface SidebarProps {
   open: boolean;
   onClose: () => void;
   isAdmin: boolean;
+  showBetaBadge?: boolean;
 }
 
-function SidebarContent({ onNavigate, isAdmin }: { onNavigate?: () => void; isAdmin: boolean }) {
+function BetaBadge() {
+  return (
+    <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+      Beta
+    </span>
+  );
+}
+
+function SidebarContent({
+  onNavigate,
+  isAdmin,
+  showBetaBadge,
+}: {
+  onNavigate?: () => void;
+  isAdmin: boolean;
+  showBetaBadge?: boolean;
+}) {
   return (
     <>
-      <Link href="/dashboard" className="flex h-16 shrink-0 items-center px-4 text-sm font-semibold tracking-tight">
+      <Link href="/dashboard" className="flex h-16 shrink-0 items-center gap-2 px-4 text-sm font-semibold tracking-tight">
         {siteConfig.name}
+        {showBetaBadge && <BetaBadge />}
       </Link>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {dashboardNav
@@ -30,12 +48,12 @@ function SidebarContent({ onNavigate, isAdmin }: { onNavigate?: () => void; isAd
   );
 }
 
-export function Sidebar({ open, onClose, isAdmin }: SidebarProps) {
+export function Sidebar({ open, onClose, isAdmin, showBetaBadge }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 md:flex">
-        <SidebarContent isAdmin={isAdmin} />
+        <SidebarContent isAdmin={isAdmin} showBetaBadge={showBetaBadge} />
       </aside>
 
       {/* Mobile slide-over */}
@@ -60,7 +78,10 @@ export function Sidebar({ open, onClose, isAdmin }: SidebarProps) {
           )}
         >
           <div className="flex h-16 shrink-0 items-center justify-between px-4">
-            <span className="text-sm font-semibold tracking-tight">{siteConfig.name}</span>
+            <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+              {siteConfig.name}
+              {showBetaBadge && <BetaBadge />}
+            </span>
             <button
               type="button"
               onClick={onClose}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { isProductionEnv } from "@/lib/env";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -23,7 +24,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const displayName = profile?.full_name || user.email || "Account";
 
   return (
-    <DashboardShell email={user.email ?? ""} displayName={displayName} isAdmin={profile?.role === "admin"}>
+    <DashboardShell
+      email={user.email ?? ""}
+      displayName={displayName}
+      isAdmin={profile?.role === "admin"}
+      showBetaBadge={!isProductionEnv()}
+    >
       {children}
     </DashboardShell>
   );
