@@ -6,6 +6,8 @@ import { formatZAR, formatFileSize } from "@/lib/format";
 import { getPricingTierLabel, pricingConfig } from "@/config/pricing";
 import { processingStageLabels } from "@/lib/processing/status";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { isDevPaymentBypassEnabled } from "@/lib/payments/dev-bypass";
+import { DevPaymentBypassForm } from "@/components/boq/dev-payment-bypass-form";
 
 export const metadata: Metadata = { title: "BOQ Processing Preview" };
 
@@ -41,6 +43,20 @@ export default async function BoqPreviewPage({
 
   const isEnterprise = boq.pricing_tier === "enterprise";
   const isUnlocked = job.status !== "WAITING_FOR_PAYMENT";
+
+  // Dev bypass affordance is a UI convenience only — simulateDevPayment()
+  // re-checks both the env flag and admin role itself server-side, so this
+  // check being wrong (or bypassed) can't unlock anything on its own.
+  let showDevBypass = false;
+  if (isDevPaymentBypassEnabled() && !isUnlocked) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      showDevBypass = profile?.role === "admin";
+    }
+  }
 
   return (
     <div className="mx-auto max-w-lg">
@@ -105,11 +121,14 @@ export default async function BoqPreviewPage({
             .
           </div>
         ) : (
-          <form action={`/api/boq/${boq.id}/pay`} method="POST">
-            <SubmitButton pendingText="Redirecting..." className="w-full">
-              Proceed to Payment
-            </SubmitButton>
-          </form>
+          <>
+            <form action={`/api/boq/${boq.id}/pay`} method="POST">
+              <SubmitButton pendingText="Redirecting..." className="w-full">
+                Proceed to Payment
+              </SubmitButton>
+            </form>
+            {showDevBypass && <DevPaymentBypassForm boqId={boq.id} />}
+          </>
         )}
       </div>
     </div>

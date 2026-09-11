@@ -79,12 +79,26 @@ export default async function AdminDashboardPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Platform-wide metrics across all organisations.</p>
 
-      <Link
-        href="/dashboard/admin/canonical-items"
-        className="mt-4 inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-      >
-        Manage canonical construction items →
-      </Link>
+      <div className="mt-4 flex flex-col gap-1">
+        <Link
+          href="/dashboard/admin/canonical-items"
+          className="inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        >
+          Manage canonical construction items →
+        </Link>
+        <Link
+          href="/dashboard/admin/embeddings"
+          className="inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        >
+          Embeddings (Phase 3) →
+        </Link>
+        <Link
+          href="/dashboard/admin/semantic-search"
+          className="inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        >
+          Semantic Rate Explorer (Phase 4) →
+        </Link>
+      </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (

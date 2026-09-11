@@ -11,11 +11,82 @@ import type {
   PaymentStatus,
 } from "./types";
 import type { Database } from "@/types/database.types";
+import { processCurrentBoq } from "@/lib/boq-pricing/process-boq";
 
 function withPaymentId(url: string, paymentId: string): string {
   const withParam = new URL(url);
   withParam.searchParams.set("payment", paymentId);
   return withParam.toString();
+}
+
+/**
+ * The single place a completed payment (from any source — the real PayFast
+ * ITN, or the development payment bypass) turns into "this BOQ is unlocked":
+ * advances the job to QUEUED, runs extraction inline, records the timeline
+ * event, updates usage/spend stats, and writes the audit log entry. Exported
+ * so src/lib/actions/dev-payment-bypass.ts can reuse it exactly rather than
+ * re-implementing the unlock side effects — the dev bypass must unlock
+ * precisely what a real payment unlocks, nothing more or less.
+ */
+export async function applyBoqPaymentCompletion(
+  supabase: SupabaseClient<Database>,
+  boqId: string,
+  amount: number,
+  options: { devBypass?: boolean; triggeredBy?: string } = {},
+): Promise<void> {
+  const { data: boq } = await supabase
+    .from("boqs")
+    .select("id, user_id, project_id, page_count")
+    .eq("id", boqId)
+    .single();
+
+  if (!boq || !boq.project_id) return;
+
+  // No queue worker exists yet — the job is moved straight to QUEUED and
+  // extraction runs inline immediately after, same as the free-upload path
+  // in uploadBoq() (src/lib/actions/boq.ts).
+  await supabase
+    .from("processing_jobs")
+    .update({ status: "QUEUED", updated_at: new Date().toISOString() })
+    .eq("boq_id", boqId);
+
+  await processCurrentBoq(supabase, boqId);
+
+  await supabase.from("project_timeline").insert({
+    project_id: boq.project_id,
+    event_type: "payment_received",
+    metadata: { boq_id: boqId, amount, ...(options.devBypass ? { dev_bypass: true } : {}) },
+  });
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organisation_id, paid_boq_count, total_pages_processed, lifetime_spend")
+    .eq("id", boq.user_id)
+    .single();
+
+  if (!profile) return;
+
+  await supabase
+    .from("profiles")
+    .update({
+      paid_boq_count: profile.paid_boq_count + 1,
+      total_pages_processed: profile.total_pages_processed + boq.page_count,
+      lifetime_spend: Number(profile.lifetime_spend) + amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", boq.user_id);
+
+  await logAuditEvent(supabase, {
+    organisationId: profile.organisation_id,
+    actorUserId: boq.user_id,
+    eventType: "payment",
+    entityType: "boq",
+    entityId: boqId,
+    metadata: {
+      amount,
+      ...(options.devBypass ? { dev_bypass: true, triggered_by: options.triggeredBy ?? null } : {}),
+    },
+  });
 }
 
 class PaymentServiceImpl implements PaymentServiceInterface {
@@ -112,64 +183,10 @@ class PaymentServiceImpl implements PaymentServiceInterface {
       .eq("id", payment.id);
 
     if (notification.status === "complete" && payment.boq_id) {
-      await this.applyBoqPaymentCompletion(supabase, payment.boq_id, Number(payment.amount));
+      await applyBoqPaymentCompletion(supabase, payment.boq_id, Number(payment.amount));
     }
 
     return notification;
-  }
-
-  private async applyBoqPaymentCompletion(
-    supabase: SupabaseClient<Database>,
-    boqId: string,
-    amount: number,
-  ) {
-    const { data: boq } = await supabase
-      .from("boqs")
-      .select("id, user_id, project_id, page_count")
-      .eq("id", boqId)
-      .single();
-
-    if (!boq || !boq.project_id) return;
-
-    // No queue worker exists yet — the job is moved straight to QUEUED and
-    // parks there. A future worker picks up QUEUED jobs and takes it from here.
-    await supabase
-      .from("processing_jobs")
-      .update({ status: "QUEUED", updated_at: new Date().toISOString() })
-      .eq("boq_id", boqId);
-
-    await supabase.from("project_timeline").insert({
-      project_id: boq.project_id,
-      event_type: "payment_received",
-      metadata: { boq_id: boqId, amount },
-    });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organisation_id, paid_boq_count, total_pages_processed, lifetime_spend")
-      .eq("id", boq.user_id)
-      .single();
-
-    if (!profile) return;
-
-    await supabase
-      .from("profiles")
-      .update({
-        paid_boq_count: profile.paid_boq_count + 1,
-        total_pages_processed: profile.total_pages_processed + boq.page_count,
-        lifetime_spend: Number(profile.lifetime_spend) + amount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", boq.user_id);
-
-    await logAuditEvent(supabase, {
-      organisationId: profile.organisation_id,
-      actorUserId: boq.user_id,
-      eventType: "payment",
-      entityType: "boq",
-      entityId: boqId,
-      metadata: { amount },
-    });
   }
 
   async getPaymentStatus(

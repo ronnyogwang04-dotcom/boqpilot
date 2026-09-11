@@ -6,6 +6,7 @@ import { listCanonicalItems } from "@/lib/queries/canonical-items";
 import { getRateExplorerFilterOptions } from "@/lib/queries/rate-library-items";
 import { isKnownUnit } from "@/lib/construction-intelligence/normalise-unit";
 import { formatZAR } from "@/lib/format";
+import { EmbeddingStatusBadge } from "@/components/admin/embedding-status-badge";
 
 export const metadata: Metadata = { title: "Canonical Items" };
 
@@ -134,13 +135,14 @@ export default async function CanonicalItemsPage({ searchParams }: { searchParam
               <th className="px-4 py-2 font-medium">Category</th>
               <th className="px-4 py-2 font-medium text-right">Samples</th>
               <th className="px-4 py-2 font-medium text-right">Avg rate</th>
+              <th className="px-4 py-2 font-medium">Embedding</th>
               <th className="px-4 py-2 font-medium" />
             </tr>
           </thead>
           <tbody>
             {result.items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-zinc-500">
+                <td colSpan={8} className="px-4 py-6 text-center text-zinc-500">
                   No canonical items match these filters.
                 </td>
               </tr>
@@ -161,6 +163,9 @@ export default async function CanonicalItemsPage({ searchParams }: { searchParam
                   <td className="px-4 py-2 text-right text-zinc-600 dark:text-zinc-400">{item.sample_count}</td>
                   <td className="px-4 py-2 text-right font-medium">
                     {item.avg_rate === null ? "—" : formatZAR(Number(item.avg_rate))}
+                  </td>
+                  <td className="px-4 py-2">
+                    <EmbeddingStatusBadge status={item.embeddingStatus} />
                   </td>
                   <td className="px-4 py-2 text-right">
                     <Link

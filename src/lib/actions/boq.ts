@@ -1,13 +1,19 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import readExcelFile from "read-excel-file/node";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPdfPageCount } from "@/lib/boq/pdf";
 import { getPricingEngine } from "@/lib/pricing/pricing-engine";
 import { isFreeTrialEligible } from "@/lib/pricing/free-trial";
 import { pricingConfig } from "@/config/pricing";
+import { boqPricingConfig } from "@/config/boq-pricing";
+import { resolveSourceType } from "@/lib/historical-boq/parsers/registry";
+import { processCurrentBoq } from "@/lib/boq-pricing/process-boq";
 import { logAuditEvent } from "@/lib/audit/log-event";
 import type { ActionState } from "@/types/action-state";
+import type { BoqLineItemSourceFormat } from "@/types/database.types";
 
 export async function uploadBoq(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
@@ -27,27 +33,44 @@ export async function uploadBoq(_prevState: ActionState, formData: FormData): Pr
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", message: "Please choose a PDF file to upload." };
+    return { status: "error", message: "Please choose a file to upload." };
   }
 
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return { status: "error", message: "Only PDF files are supported." };
+  const resolvedType = resolveSourceType(file.name, file.type);
+  if (resolvedType !== "excel" && resolvedType !== "pdf") {
+    return { status: "error", message: "Only Excel (.xlsx, .xls) and PDF files are supported." };
   }
+  const sourceFormat: BoqLineItemSourceFormat = resolvedType;
 
   const maxBytes = pricingConfig.maxUploadSizeMb * 1024 * 1024;
   if (file.size > maxBytes) {
     return { status: "error", message: `File is too large (max ${pricingConfig.maxUploadSizeMb}MB).` };
   }
 
-  // The buffer is only ever used in-memory to count pages — it is never
-  // written to storage or a database column.
-  const buffer = await file.arrayBuffer();
-
+  // Page count (or, for Excel, a row-count-derived page-count equivalent)
+  // drives the existing page-tier pricing engine unchanged — see
+  // boqPricingConfig.excelRowsPerPageEquivalent for the approximation.
   let pageCount: number;
   try {
-    pageCount = await getPdfPageCount(buffer);
+    if (sourceFormat === "pdf") {
+      const buffer = await file.arrayBuffer();
+      pageCount = await getPdfPageCount(buffer);
+    } else {
+      const sheets = await readExcelFile(Buffer.from(await file.arrayBuffer()));
+      const totalRows = sheets.reduce((sum, sheet) => sum + sheet.data.length, 0);
+      pageCount = Math.max(1, Math.ceil(totalRows / boqPricingConfig.excelRowsPerPageEquivalent));
+    }
   } catch (error) {
-    return { status: "error", message: error instanceof Error ? error.message : "Could not read PDF." };
+    // Only getPdfPageCount()'s own message is written to be user-facing;
+    // read-excel-file can throw a raw internal error here (this pre-read
+    // bypasses ExcelParser's friendlier wrapping, since it only needs a row
+    // count, not a full parse) — never show that verbatim.
+    console.error("uploadBoq: failed to read file for page count", error);
+    const message =
+      sourceFormat === "pdf" && error instanceof Error
+        ? error.message
+        : "We couldn't read this file. Please check that it's a valid, unencrypted Excel or PDF BOQ and try again.";
+    return { status: "error", message };
   }
 
   const { data: profile } = await supabase
@@ -97,9 +120,25 @@ export async function uploadBoq(_prevState: ActionState, formData: FormData): Pr
     return { status: "error", message: "Could not create a new BOQ version." };
   }
 
+  // Pre-generate the id so the storage path can be known before insert —
+  // same convention as uploadHistoricalBoq(). Real extraction needs the
+  // file bytes, so (unlike before) they're now persisted to a private,
+  // organisation-scoped bucket rather than discarded after the page count.
+  const boqId = randomUUID();
+  const storagePath = `${profile.organisation_id}/${boqId}/${file.name}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("pricing-boqs")
+    .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
+
+  if (uploadError) {
+    return { status: "error", message: "Could not upload this file. Please try again." };
+  }
+
   const { data: boq, error: boqError } = await supabase
     .from("boqs")
     .insert({
+      id: boqId,
       user_id: user.id,
       project_id: projectId,
       project_version_id: version.id,
@@ -110,21 +149,30 @@ export async function uploadBoq(_prevState: ActionState, formData: FormData): Pr
       price: pricing.price,
       currency: pricing.currency,
       is_free: pricing.isFree,
+      storage_path: storagePath,
+      source_format: sourceFormat,
     })
     .select("id")
     .single();
 
   if (boqError || !boq) {
+    await supabase.storage.from("pricing-boqs").remove([storagePath]);
     return { status: "error", message: "Could not save this BOQ. Please try again." };
   }
 
   // No queue worker exists yet — a free BOQ has nothing to wait on, so its
-  // job goes straight to QUEUED and parks there; a paid one waits for PayFast.
+  // job goes straight to QUEUED and parks there; a paid one waits for
+  // PayFast (see src/lib/payments/service.ts for the paid-path trigger).
+  const initialStatus = pricing.isFree ? "QUEUED" : "WAITING_FOR_PAYMENT";
   await supabase.from("processing_jobs").insert({
     boq_id: boq.id,
     project_id: projectId,
-    status: pricing.isFree ? "QUEUED" : "WAITING_FOR_PAYMENT",
+    status: initialStatus,
   });
+
+  if (initialStatus === "QUEUED") {
+    await processCurrentBoq(supabase, boq.id);
+  }
 
   await supabase.from("project_timeline").insert({
     project_id: projectId,

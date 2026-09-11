@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import type { HistoricalBoqItemStatus, HistoricalBoqRowType } from "@/types/database.types";
+import type {
+  HistoricalBoqItemStatus,
+  HistoricalBoqProcessingJobStatus,
+  HistoricalBoqRowType,
+} from "@/types/database.types";
 
 export const HISTORICAL_LIBRARY_PAGE_SIZE = 50;
 
@@ -29,7 +33,7 @@ export type HistoricalLibraryFilters = {
 
 export type HistoricalLibraryItem = {
   id: string;
-  project_id: string;
+  project_id: string | null;
   historical_boq_id: string;
   uploaded_at: string;
   row_number: number;
@@ -86,6 +90,49 @@ export async function listHistoricalBoqItems(filters: HistoricalLibraryFilters, 
   }
 
   return { items: data ?? [], count: count ?? 0, page: safePage, pageSize: HISTORICAL_LIBRARY_PAGE_SIZE };
+}
+
+export type HistoricalLibrarySummary = {
+  totalHistoricalBoqs: number;
+  totalItems: number;
+  distinctProjectCount: number;
+  latestUploadAt: string | null;
+  statusBreakdown: Partial<Record<HistoricalBoqProcessingJobStatus, number>>;
+};
+
+// Org-wide summary for the Historical Library landing page. All queries rely
+// purely on RLS (organisation_id = current_organisation_id()) for scoping,
+// same as listHistoricalBoqItems above — no explicit organisation_id filter
+// needed.
+export async function getHistoricalLibrarySummaryStats(): Promise<HistoricalLibrarySummary> {
+  const supabase = await createClient();
+
+  const [{ count: totalHistoricalBoqs }, { count: totalItems }, { data: latest }, { data: jobs }, { data: projectRows }] =
+    await Promise.all([
+      supabase.from("historical_boqs").select("id", { count: "exact", head: true }),
+      supabase.from("historical_boq_items").select("id", { count: "exact", head: true }),
+      supabase.from("historical_boqs").select("created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("historical_boq_processing_jobs").select("status"),
+      supabase.from("historical_boqs").select("project_id").not("project_id", "is", null),
+    ]);
+
+  const distinctProjectCount = new Set((projectRows ?? []).map((row) => row.project_id)).size;
+
+  const statusBreakdown = (jobs ?? []).reduce<Partial<Record<HistoricalBoqProcessingJobStatus, number>>>(
+    (acc, job) => {
+      acc[job.status] = (acc[job.status] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
+  return {
+    totalHistoricalBoqs: totalHistoricalBoqs ?? 0,
+    totalItems: totalItems ?? 0,
+    distinctProjectCount,
+    latestUploadAt: latest?.created_at ?? null,
+    statusBreakdown,
+  };
 }
 
 export async function getHistoricalLibraryFilterOptions() {

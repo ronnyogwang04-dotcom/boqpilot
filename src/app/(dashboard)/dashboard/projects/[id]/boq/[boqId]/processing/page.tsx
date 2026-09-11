@@ -67,9 +67,18 @@ export default async function BoqProcessingPage({
 
           {job.status === "QUEUED" && (
             <p className="mt-4 rounded-md border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
-              Your BOQ is queued. AI processing modules are launching soon — this page will update
-              automatically once they do.
+              Your BOQ is queued for processing.
             </p>
+          )}
+
+          {job.status === "COMPLETED" && (
+            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
+              Extraction complete.{" "}
+              <Link href={`/dashboard/projects/${id}/boq/${boqId}/items`} className="underline">
+                View pricing
+              </Link>
+              .
+            </div>
           )}
 
           <ol className="mt-6 flex flex-col gap-3 text-sm">

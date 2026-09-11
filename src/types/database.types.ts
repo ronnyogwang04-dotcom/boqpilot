@@ -56,6 +56,27 @@ export type HistoricalBoqRowType =
   | "note_specification"
   | "contractual_text"
   | "general_text";
+export type BoqLineItemRowType = HistoricalBoqRowType;
+export type BoqLineItemStatus = "ok" | "needs_review" | "error";
+export type BoqLineItemSourceFormat = "excel" | "pdf";
+export type BoqLineItemRateSource = "historical" | "online" | "build_up" | "manual";
+
+export type MarketResearchStatus = "pending" | "researching" | "complete" | "no_result" | "needs_review" | "failed";
+export type MarketEvidenceQuality = "strong" | "reasonable" | "limited" | "none";
+export type MarketVatStatus = "inclusive" | "exclusive" | "unknown";
+export type MarketPricingBasis = "each" | "metre" | "length" | "pack" | "box" | "kg" | "tonne" | "litre" | "m2" | "m3" | "day" | "hour" | "other";
+export type MarketEvidenceClassification =
+  | "material_product_price"
+  | "supply_only_price"
+  | "supply_and_install_price"
+  | "installed_service_rate"
+  | "equipment_hire_rate"
+  | "subcontractor_specialist_price"
+  | "other"
+  | "unknown";
+export type MarketMatchType = "exact" | "comparable" | "unknown";
+export type SourceEvidenceQuality = "strong" | "reasonable" | "limited" | "unverified";
+export type MarketSourceOrigin = "south_africa" | "international" | "unknown";
 
 export type Database = {
   public: {
@@ -319,6 +340,8 @@ export type Database = {
           price: number;
           currency: string;
           is_free: boolean;
+          storage_path: string | null;
+          source_format: BoqLineItemSourceFormat | null;
           created_at: string;
           updated_at: string;
         };
@@ -334,6 +357,8 @@ export type Database = {
           price?: number;
           currency?: string;
           is_free?: boolean;
+          storage_path?: string | null;
+          source_format?: BoqLineItemSourceFormat | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -349,6 +374,8 @@ export type Database = {
           price?: number;
           currency?: string;
           is_free?: boolean;
+          storage_path?: string | null;
+          source_format?: BoqLineItemSourceFormat | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -438,6 +465,447 @@ export type Database = {
             columns: ["project_id"];
             isOneToOne: false;
             referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      boq_line_items: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          project_id: string;
+          boq_id: string;
+          row_number: number;
+          row_type: BoqLineItemRowType;
+          section: string | null;
+          item_code: string | null;
+          description: string;
+          unit: string | null;
+          quantity: number | null;
+          unit_rate: number | null;
+          amount: number | null;
+          category: string | null;
+          status: BoqLineItemStatus;
+          validation_errors: Json | null;
+          raw_row: Json | null;
+          source_format: BoqLineItemSourceFormat;
+          normalised_description: string | null;
+          normalised_unit: string | null;
+          category_division: string | null;
+          construction_category: string | null;
+          estimator_rate: number | null;
+          rate_source: BoqLineItemRateSource | null;
+          rate_notes: string | null;
+          priced_at: string | null;
+          priced_by: string | null;
+          cost_buildup_components: Json | null;
+          cost_buildup_markups: Json | null;
+          benchmark_snapshot: Json | null;
+          system_suggested_snapshot: Json | null;
+          system_suggested_at: string | null;
+          market_research_snapshot: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          project_id: string;
+          boq_id: string;
+          row_number: number;
+          row_type?: BoqLineItemRowType;
+          section?: string | null;
+          item_code?: string | null;
+          description: string;
+          unit?: string | null;
+          quantity?: number | null;
+          unit_rate?: number | null;
+          amount?: number | null;
+          category?: string | null;
+          status?: BoqLineItemStatus;
+          validation_errors?: Json | null;
+          raw_row?: Json | null;
+          source_format: BoqLineItemSourceFormat;
+          normalised_description?: string | null;
+          normalised_unit?: string | null;
+          category_division?: string | null;
+          construction_category?: string | null;
+          estimator_rate?: number | null;
+          rate_source?: BoqLineItemRateSource | null;
+          rate_notes?: string | null;
+          priced_at?: string | null;
+          priced_by?: string | null;
+          cost_buildup_components?: Json | null;
+          cost_buildup_markups?: Json | null;
+          benchmark_snapshot?: Json | null;
+          system_suggested_snapshot?: Json | null;
+          system_suggested_at?: string | null;
+          market_research_snapshot?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organisation_id?: string;
+          project_id?: string;
+          boq_id?: string;
+          row_number?: number;
+          row_type?: BoqLineItemRowType;
+          section?: string | null;
+          item_code?: string | null;
+          description?: string;
+          unit?: string | null;
+          quantity?: number | null;
+          unit_rate?: number | null;
+          amount?: number | null;
+          category?: string | null;
+          status?: BoqLineItemStatus;
+          validation_errors?: Json | null;
+          raw_row?: Json | null;
+          source_format?: BoqLineItemSourceFormat;
+          normalised_description?: string | null;
+          normalised_unit?: string | null;
+          category_division?: string | null;
+          construction_category?: string | null;
+          estimator_rate?: number | null;
+          rate_source?: BoqLineItemRateSource | null;
+          rate_notes?: string | null;
+          priced_at?: string | null;
+          priced_by?: string | null;
+          cost_buildup_components?: Json | null;
+          cost_buildup_markups?: Json | null;
+          benchmark_snapshot?: Json | null;
+          system_suggested_snapshot?: Json | null;
+          system_suggested_at?: string | null;
+          market_research_snapshot?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "boq_line_items_organisation_id_fkey";
+            columns: ["organisation_id"];
+            isOneToOne: false;
+            referencedRelation: "organisations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "boq_line_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "boq_line_items_boq_id_fkey";
+            columns: ["boq_id"];
+            isOneToOne: false;
+            referencedRelation: "boqs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "boq_line_items_priced_by_fkey";
+            columns: ["priced_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      market_research_runs: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          project_id: string;
+          boq_id: string;
+          line_item_id: string;
+          provider: string;
+          search_spec: Json;
+          search_spec_hash: string;
+          status: MarketResearchStatus;
+          error_message: string | null;
+          overall_confidence: MarketEvidenceQuality | null;
+          observed_range_min: number | null;
+          observed_range_max: number | null;
+          observed_range_unit: string | null;
+          representative_baseline: number | null;
+          high_variance: boolean;
+          comparability_note: string | null;
+          requested_by: string | null;
+          researched_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          project_id: string;
+          boq_id: string;
+          line_item_id: string;
+          provider: string;
+          search_spec: Json;
+          search_spec_hash: string;
+          status?: MarketResearchStatus;
+          error_message?: string | null;
+          overall_confidence?: MarketEvidenceQuality | null;
+          observed_range_min?: number | null;
+          observed_range_max?: number | null;
+          observed_range_unit?: string | null;
+          representative_baseline?: number | null;
+          high_variance?: boolean;
+          comparability_note?: string | null;
+          requested_by?: string | null;
+          researched_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organisation_id?: string;
+          project_id?: string;
+          boq_id?: string;
+          line_item_id?: string;
+          provider?: string;
+          search_spec?: Json;
+          search_spec_hash?: string;
+          status?: MarketResearchStatus;
+          error_message?: string | null;
+          overall_confidence?: MarketEvidenceQuality | null;
+          observed_range_min?: number | null;
+          observed_range_max?: number | null;
+          observed_range_unit?: string | null;
+          representative_baseline?: number | null;
+          high_variance?: boolean;
+          comparability_note?: string | null;
+          requested_by?: string | null;
+          researched_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "market_research_runs_organisation_id_fkey";
+            columns: ["organisation_id"];
+            isOneToOne: false;
+            referencedRelation: "organisations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_research_runs_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_research_runs_boq_id_fkey";
+            columns: ["boq_id"];
+            isOneToOne: false;
+            referencedRelation: "boqs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_research_runs_line_item_id_fkey";
+            columns: ["line_item_id"];
+            isOneToOne: false;
+            referencedRelation: "boq_line_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      market_evidence: {
+        Row: {
+          id: string;
+          research_run_id: string | null;
+          organisation_id: string;
+          project_id: string;
+          line_item_id: string;
+          supplier_name: string;
+          source_title: string | null;
+          source_url: string | null;
+          source_domain: string | null;
+          source_origin: MarketSourceOrigin;
+          product_description: string | null;
+          manufacturer: string | null;
+          brand: string | null;
+          specification: string | null;
+          dimensions: string | null;
+          source_price: number | null;
+          currency: string;
+          vat_status: MarketVatStatus;
+          pricing_basis: MarketPricingBasis | null;
+          pack_quantity: number | null;
+          normalised_unit: string | null;
+          normalised_price: number | null;
+          normalisation_calculation: string | null;
+          delivery_status: string | null;
+          geographic_relevance: string | null;
+          evidence_classification: MarketEvidenceClassification;
+          match_type: MarketMatchType;
+          evidence_quality: SourceEvidenceQuality;
+          verified: boolean;
+          is_accepted: boolean;
+          rejection_reason: string | null;
+          is_manual: boolean;
+          quote_reference: string | null;
+          source_date: string | null;
+          retrieved_at: string;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          research_run_id?: string | null;
+          organisation_id: string;
+          project_id: string;
+          line_item_id: string;
+          supplier_name: string;
+          source_title?: string | null;
+          source_url?: string | null;
+          source_domain?: string | null;
+          source_origin?: MarketSourceOrigin;
+          product_description?: string | null;
+          manufacturer?: string | null;
+          brand?: string | null;
+          specification?: string | null;
+          dimensions?: string | null;
+          source_price?: number | null;
+          currency?: string;
+          vat_status?: MarketVatStatus;
+          pricing_basis?: MarketPricingBasis | null;
+          pack_quantity?: number | null;
+          normalised_unit?: string | null;
+          normalised_price?: number | null;
+          normalisation_calculation?: string | null;
+          delivery_status?: string | null;
+          geographic_relevance?: string | null;
+          evidence_classification?: MarketEvidenceClassification;
+          match_type?: MarketMatchType;
+          evidence_quality?: SourceEvidenceQuality;
+          verified?: boolean;
+          is_accepted?: boolean;
+          rejection_reason?: string | null;
+          is_manual?: boolean;
+          quote_reference?: string | null;
+          source_date?: string | null;
+          retrieved_at?: string;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          research_run_id?: string | null;
+          organisation_id?: string;
+          project_id?: string;
+          line_item_id?: string;
+          supplier_name?: string;
+          source_title?: string | null;
+          source_url?: string | null;
+          source_domain?: string | null;
+          source_origin?: MarketSourceOrigin;
+          product_description?: string | null;
+          manufacturer?: string | null;
+          brand?: string | null;
+          specification?: string | null;
+          dimensions?: string | null;
+          source_price?: number | null;
+          currency?: string;
+          vat_status?: MarketVatStatus;
+          pricing_basis?: MarketPricingBasis | null;
+          pack_quantity?: number | null;
+          normalised_unit?: string | null;
+          normalised_price?: number | null;
+          normalisation_calculation?: string | null;
+          delivery_status?: string | null;
+          geographic_relevance?: string | null;
+          evidence_classification?: MarketEvidenceClassification;
+          match_type?: MarketMatchType;
+          evidence_quality?: SourceEvidenceQuality;
+          verified?: boolean;
+          is_accepted?: boolean;
+          rejection_reason?: string | null;
+          is_manual?: boolean;
+          quote_reference?: string | null;
+          source_date?: string | null;
+          retrieved_at?: string;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "market_evidence_research_run_id_fkey";
+            columns: ["research_run_id"];
+            isOneToOne: false;
+            referencedRelation: "market_research_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_evidence_organisation_id_fkey";
+            columns: ["organisation_id"];
+            isOneToOne: false;
+            referencedRelation: "organisations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_evidence_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "market_evidence_line_item_id_fkey";
+            columns: ["line_item_id"];
+            isOneToOne: false;
+            referencedRelation: "boq_line_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pricing_markup_settings: {
+        Row: {
+          organisation_id: string;
+          wastage_percent: number;
+          site_overhead_percent: number;
+          head_office_overhead_percent: number;
+          profit_percent: number;
+          contingency_percent: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          organisation_id: string;
+          wastage_percent?: number;
+          site_overhead_percent?: number;
+          head_office_overhead_percent?: number;
+          profit_percent?: number;
+          contingency_percent?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          organisation_id?: string;
+          wastage_percent?: number;
+          site_overhead_percent?: number;
+          head_office_overhead_percent?: number;
+          profit_percent?: number;
+          contingency_percent?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pricing_markup_settings_organisation_id_fkey";
+            columns: ["organisation_id"];
+            isOneToOne: true;
+            referencedRelation: "organisations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pricing_markup_settings_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -659,6 +1127,10 @@ export type Database = {
           most_recent_historical_boq_id: string | null;
           merged_into_id: string | null;
           admin_notes: string | null;
+          embedding_input_text: string | null;
+          embedding_model: string | null;
+          embedding_generated_at: string | null;
+          embedding_last_error: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -688,6 +1160,10 @@ export type Database = {
           most_recent_historical_boq_id?: string | null;
           merged_into_id?: string | null;
           admin_notes?: string | null;
+          embedding_input_text?: string | null;
+          embedding_model?: string | null;
+          embedding_generated_at?: string | null;
+          embedding_last_error?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -717,6 +1193,10 @@ export type Database = {
           most_recent_historical_boq_id?: string | null;
           merged_into_id?: string | null;
           admin_notes?: string | null;
+          embedding_input_text?: string | null;
+          embedding_model?: string | null;
+          embedding_generated_at?: string | null;
+          embedding_last_error?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -755,7 +1235,7 @@ export type Database = {
         Row: {
           id: string;
           organisation_id: string;
-          project_id: string;
+          project_id: string | null;
           uploaded_by: string;
           source_type: HistoricalBoqSourceType;
           original_filename: string;
@@ -768,7 +1248,7 @@ export type Database = {
         Insert: {
           id?: string;
           organisation_id: string;
-          project_id: string;
+          project_id?: string | null;
           uploaded_by: string;
           source_type: HistoricalBoqSourceType;
           original_filename: string;
@@ -781,7 +1261,7 @@ export type Database = {
         Update: {
           id?: string;
           organisation_id?: string;
-          project_id?: string;
+          project_id?: string | null;
           uploaded_by?: string;
           source_type?: HistoricalBoqSourceType;
           original_filename?: string;
@@ -820,7 +1300,8 @@ export type Database = {
           id: string;
           job_number: number;
           historical_boq_id: string;
-          project_id: string;
+          organisation_id: string;
+          project_id: string | null;
           status: HistoricalBoqProcessingJobStatus;
           rows_detected: number;
           rows_extracted: number;
@@ -837,7 +1318,8 @@ export type Database = {
           id?: string;
           job_number?: number;
           historical_boq_id: string;
-          project_id: string;
+          organisation_id: string;
+          project_id?: string | null;
           status?: HistoricalBoqProcessingJobStatus;
           rows_detected?: number;
           rows_extracted?: number;
@@ -854,7 +1336,8 @@ export type Database = {
           id?: string;
           job_number?: number;
           historical_boq_id?: string;
-          project_id?: string;
+          organisation_id?: string;
+          project_id?: string | null;
           status?: HistoricalBoqProcessingJobStatus;
           rows_detected?: number;
           rows_extracted?: number;
@@ -876,6 +1359,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "historical_boq_processing_jobs_organisation_id_fkey";
+            columns: ["organisation_id"];
+            isOneToOne: false;
+            referencedRelation: "organisations";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "historical_boq_processing_jobs_project_id_fkey";
             columns: ["project_id"];
             isOneToOne: false;
@@ -888,7 +1378,7 @@ export type Database = {
         Row: {
           id: string;
           organisation_id: string;
-          project_id: string;
+          project_id: string | null;
           historical_boq_id: string;
           uploaded_at: string;
           row_number: number;
@@ -910,7 +1400,7 @@ export type Database = {
         Insert: {
           id?: string;
           organisation_id: string;
-          project_id: string;
+          project_id?: string | null;
           historical_boq_id: string;
           uploaded_at: string;
           row_number: number;
@@ -932,7 +1422,7 @@ export type Database = {
         Update: {
           id?: string;
           organisation_id?: string;
-          project_id?: string;
+          project_id?: string | null;
           historical_boq_id?: string;
           uploaded_at?: string;
           row_number?: number;

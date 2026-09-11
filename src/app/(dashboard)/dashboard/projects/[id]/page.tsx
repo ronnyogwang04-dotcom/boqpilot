@@ -6,6 +6,10 @@ import { formatZAR } from "@/lib/format";
 import { processingStageLabels } from "@/lib/processing/status";
 import { PaymentStatusBadge } from "@/components/dashboard/payment-status-badge";
 import type { PaymentStatus } from "@/lib/payments/types";
+import { getHistoricalLibrarySummaryStats } from "@/lib/queries/historical-boq-items";
+import { getBoqPricingProgress } from "@/lib/queries/boq-line-items";
+import { computeProjectWorkflowStatus, type ProjectWorkflowCtaKey } from "@/lib/project-workflow/status";
+import { ProjectWorkflowStepper } from "@/components/dashboard/project-workflow-stepper";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -63,6 +67,44 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         .order("created_at", { ascending: false })
     : { data: [] };
 
+  // "The current BOQ" is the latest project_version's BOQ — this is what the
+  // workspace stepper/CTAs below act on. Historical BOQs are a separate,
+  // organisation-wide library (see historical-library) and are summarised
+  // here only as a count, never duplicated per project.
+  const latestVersion = versions && versions.length > 0 ? versions[0] : null;
+  const currentBoq = latestVersion ? boqsByVersion.get(latestVersion.id) : undefined;
+  const currentJob = currentBoq ? jobsByBoq.get(currentBoq.id) : undefined;
+
+  const historicalSummary = await getHistoricalLibrarySummaryStats();
+  const pricingProgress =
+    currentJob?.status === "COMPLETED" && currentBoq ? await getBoqPricingProgress(currentBoq.id) : null;
+
+  const workflow = computeProjectWorkflowStatus({
+    hasCurrentBoq: Boolean(currentBoq),
+    jobStatus: currentJob?.status ?? null,
+    isEnterpriseTier: currentBoq?.pricing_tier === "enterprise",
+    historicalBoqCount: historicalSummary.totalHistoricalBoqs,
+    pricingProgress,
+  });
+
+  const projectId = project.id;
+  function hrefForCta(key: ProjectWorkflowCtaKey): string {
+    switch (key) {
+      case "upload":
+        return `/dashboard/projects/${projectId}/boq/upload`;
+      case "pay":
+      case "enterprise-contact":
+        return `/dashboard/projects/${projectId}/boq/${currentBoq?.id ?? ""}`;
+      case "processing":
+        return `/dashboard/projects/${projectId}/boq/${currentBoq?.id ?? ""}/processing`;
+      case "price":
+      case "export":
+        return `/dashboard/projects/${projectId}/boq/${currentBoq?.id ?? ""}/items`;
+      case "add-history":
+        return `/dashboard/historical-library/upload?returnToProject=${projectId}`;
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="flex items-start justify-between gap-4">
@@ -86,6 +128,10 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
             Edit
           </Link>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <ProjectWorkflowStepper result={workflow} hrefFor={hrefForCta} />
       </div>
 
       {/* Project Summary */}
@@ -120,7 +166,9 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         )}
       </section>
 
-      {/* BOQ Versions (covers both "Uploaded BOQs" and "Historical Versions") */}
+      {/* BOQ Versions — revisions of the current BOQ being priced. Historical
+          BOQs used for benchmarking live in the organisation-wide Historical
+          Rate Library, not here — see the workflow stepper above. */}
       <section className="mt-8">
         <h2 className="text-sm font-semibold">BOQ versions</h2>
         {!versions || versions.length === 0 ? (

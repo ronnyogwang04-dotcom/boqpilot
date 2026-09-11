@@ -16,14 +16,18 @@ export function BoqUploadForm({ projectId }: { projectId: string }) {
       {state.status === "error" && state.message && <Alert>{state.message}</Alert>}
 
       <label className="flex flex-col gap-1.5 text-sm">
-        BOQ document (PDF)
+        BOQ document (Excel recommended, PDF also supported)
         <input
           type="file"
           name="file"
-          accept="application/pdf,.pdf"
+          accept="application/pdf,.pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
           required
           className="rounded-md border border-dashed border-zinc-300 px-3 py-6 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:file:bg-white dark:file:text-zinc-900"
         />
+        <span className="text-xs text-zinc-500">
+          Excel (.xlsx/.xls) gives the most reliable extraction. PDF is fully supported for tender documents you only
+          have as a PDF.
+        </span>
       </label>
 
       <SubmitButton pendingText="Reading BOQ..." className="mt-2 w-full">

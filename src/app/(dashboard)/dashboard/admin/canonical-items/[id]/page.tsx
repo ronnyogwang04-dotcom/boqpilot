@@ -9,6 +9,7 @@ import { isKnownUnit } from "@/lib/construction-intelligence/normalise-unit";
 import { formatZAR } from "@/lib/format";
 import { CanonicalItemEditForm } from "@/components/admin/canonical-item-edit-form";
 import { CanonicalItemMergeButton } from "@/components/admin/canonical-item-merge-button";
+import { EmbeddingStatusBadge } from "@/components/admin/embedding-status-badge";
 
 export const metadata: Metadata = { title: "Canonical Item" };
 
@@ -76,6 +77,39 @@ export default async function CanonicalItemDetailPage({ params }: { params: Prom
         >
           View {item.sample_count} source item{item.sample_count === 1 ? "" : "s"} in the Historical Library →
         </Link>
+      </div>
+
+      <div className="mt-8 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Embedding</h2>
+          <EmbeddingStatusBadge status={item.embeddingStatus} />
+        </div>
+        <p className="mt-1 text-xs text-zinc-500">
+          Original → deterministic normalised description above → embedding input below → OpenAI vector (Phase 3,
+          similarity/retrieval only — never auto-merges canonical items).
+        </p>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+          <div>
+            <dt className="text-zinc-500">Model</dt>
+            <dd className="mt-0.5">{item.embedding_model ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-zinc-500">Generated</dt>
+            <dd className="mt-0.5">
+              {item.embedding_generated_at ? new Date(item.embedding_generated_at).toLocaleString("en-ZA") : "—"}
+            </dd>
+          </div>
+          <div className="col-span-2 sm:col-span-2">
+            <dt className="text-zinc-500">Last error</dt>
+            <dd className="mt-0.5 break-words">{item.embedding_last_error ?? "—"}</dd>
+          </div>
+        </dl>
+        <div className="mt-3">
+          <p className="text-xs text-zinc-500">Embedding input text</p>
+          <p className="mt-1 rounded-md bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-900">
+            {item.embedding_input_text ?? "Not generated yet."}
+          </p>
+        </div>
       </div>
 
       {!mergedIntoItem && (

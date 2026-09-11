@@ -19,7 +19,6 @@ const parsersBySourceType: Record<HistoricalBoqSourceType, () => BoqParser> = {
 
 const extensionToSourceType: Record<string, HistoricalBoqSourceType> = {
   ".xlsx": "excel",
-  ".xls": "excel",
   ".pdf": "pdf",
   ".doc": "word",
   ".docx": "word",
@@ -27,7 +26,6 @@ const extensionToSourceType: Record<string, HistoricalBoqSourceType> = {
 
 const mimeTypeToSourceType: Record<string, HistoricalBoqSourceType> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "excel",
-  "application/vnd.ms-excel": "excel",
   "application/pdf": "pdf",
   "application/msword": "word",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "word",
@@ -39,6 +37,12 @@ export function resolveSourceType(filename: string, mimeType: string): Historica
   const extension = filename.slice(filename.lastIndexOf(".")).toLowerCase();
   return extensionToSourceType[extension] ?? null;
 }
+
+// Re-exported for server-side callers (e.g. the upload action) that already
+// import from this module. Client components should import
+// isLegacyXlsFile directly from ./is-legacy-xls to avoid bundling
+// ExcelParser/read-excel-file (Node-only) into the browser.
+export { isLegacyXlsFile } from "./is-legacy-xls";
 
 export function getParserForSourceType(sourceType: HistoricalBoqSourceType): BoqParser {
   return parsersBySourceType[sourceType]();

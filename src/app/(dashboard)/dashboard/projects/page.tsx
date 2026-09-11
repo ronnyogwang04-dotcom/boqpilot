@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatZAR } from "@/lib/format";
 import type { ProjectStatus } from "@/types/database.types";
@@ -93,12 +94,15 @@ export default async function ProjectsPage({
               <th className="px-4 py-2 font-medium">Location</th>
               <th className="px-4 py-2 font-medium">Value</th>
               <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 font-medium">
+                <span className="sr-only">Open project</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {!projects || projects.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-zinc-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-zinc-500">
                   No projects yet.
                 </td>
               </tr>
@@ -106,10 +110,15 @@ export default async function ProjectsPage({
               projects.map((project) => (
                 <tr
                   key={project.id}
-                  className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-900 dark:hover:bg-zinc-900"
+                  className="group relative border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-900 dark:hover:bg-zinc-900"
                 >
                   <td className="px-4 py-2">
-                    <Link href={`/dashboard/projects/${project.id}`} className="font-medium hover:underline">
+                    <Link
+                      href={`/dashboard/projects/${project.id}`}
+                      className="font-medium text-zinc-900 underline decoration-zinc-300 decoration-1 underline-offset-2 hover:decoration-zinc-900 dark:text-white dark:decoration-zinc-700 dark:hover:decoration-white"
+                    >
+                      {/* Stretches the link to cover the entire row, so clicking anywhere in the row opens the project. */}
+                      <span className="absolute inset-0" aria-hidden="true" />
                       {project.name}
                     </Link>
                   </td>
@@ -128,6 +137,12 @@ export default async function ProjectsPage({
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[project.status]}`}
                     >
                       {project.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium">
+                      Open
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </span>
                   </td>
                 </tr>

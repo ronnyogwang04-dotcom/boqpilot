@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getHistoricalLibraryFilterOptions, listHistoricalBoqItems } from "@/lib/queries/historical-boq-items";
+import {
+  getHistoricalLibraryFilterOptions,
+  getHistoricalLibrarySummaryStats,
+  listHistoricalBoqItems,
+} from "@/lib/queries/historical-boq-items";
 import type { HistoricalBoqItemStatus, HistoricalBoqRowType } from "@/types/database.types";
 
 export const metadata: Metadata = { title: "Historical Rate Library" };
@@ -66,7 +70,7 @@ export default async function HistoricalLibraryPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 
-  const [filterOptions, result] = await Promise.all([
+  const [filterOptions, result, summary] = await Promise.all([
     getHistoricalLibraryFilterOptions(),
     listHistoricalBoqItems(
       {
@@ -84,6 +88,7 @@ export default async function HistoricalLibraryPage({
       },
       page,
     ),
+    getHistoricalLibrarySummaryStats(),
   ]);
 
   const projectsById = new Map(filterOptions.projects.map((project) => [project.id, project.name]));
@@ -95,16 +100,38 @@ export default async function HistoricalLibraryPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Historical Rate Library</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {result.count.toLocaleString()} extracted line item{result.count === 1 ? "" : "s"}.
+            These BOQs form your organisation&apos;s private historical pricing library and can be used to benchmark
+            any future project — they aren&apos;t tied to the project they were originally uploaded under.
           </p>
         </div>
         <Link
           href="/dashboard/historical-library/upload"
-          className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           Upload historical BOQ
         </Link>
       </div>
+
+      <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <dt className="text-xs text-zinc-500">Historical BOQs</dt>
+          <dd className="mt-1 text-xl font-semibold">{summary.totalHistoricalBoqs.toLocaleString()}</dd>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <dt className="text-xs text-zinc-500">Rate items</dt>
+          <dd className="mt-1 text-xl font-semibold">{summary.totalItems.toLocaleString()}</dd>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <dt className="text-xs text-zinc-500">Projects represented</dt>
+          <dd className="mt-1 text-xl font-semibold">{summary.distinctProjectCount.toLocaleString()}</dd>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <dt className="text-xs text-zinc-500">Latest upload</dt>
+          <dd className="mt-1 text-xl font-semibold">
+            {summary.latestUploadAt ? new Date(summary.latestUploadAt).toLocaleDateString("en-ZA") : "—"}
+          </dd>
+        </div>
+      </dl>
 
       <form className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" action="/dashboard/historical-library" method="GET">
         <input
@@ -213,7 +240,7 @@ export default async function HistoricalLibraryPage({
               result.items.map((item) => (
                 <tr key={item.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-900">
                   <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
-                    {projectsById.get(item.project_id) ?? "—"}
+                    {item.project_id ? (projectsById.get(item.project_id) ?? "—") : "—"}
                   </td>
                   <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
                     {item.row_type === "rate_item" ? (

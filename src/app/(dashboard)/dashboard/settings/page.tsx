@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSettingsForm } from "@/components/dashboard/profile-settings-form";
+import { MarkupSettingsForm } from "@/components/dashboard/markup-settings-form";
+import { getMarkupSettings } from "@/lib/actions/pricing-settings";
 import { signOut } from "@/lib/actions/auth";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -12,11 +14,10 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .single();
+  const [{ data: profile }, markupSettings] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", user!.id).single(),
+    getMarkupSettings(),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -26,6 +27,13 @@ export default async function SettingsPage() {
         <h2 className="text-sm font-semibold">Profile</h2>
         <div className="mt-4">
           <ProfileSettingsForm email={user?.email ?? ""} fullName={profile?.full_name ?? ""} />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold">Pricing markup defaults</h2>
+        <div className="mt-4">
+          <MarkupSettingsForm settings={markupSettings} />
         </div>
       </section>
 

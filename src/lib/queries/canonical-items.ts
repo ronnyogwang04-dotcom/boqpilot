@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { describeSimilarity } from "@/lib/construction-intelligence/similarity";
+import { buildEmbeddingInputText } from "@/lib/embeddings/build-input-text";
+import { classifyEmbeddingStatus, type EmbeddingStatus } from "@/lib/embeddings/eligibility";
 
 export const CANONICAL_ITEMS_PAGE_SIZE = 50;
 const DUPLICATE_CANDIDATE_LIMIT = 200;
@@ -17,7 +19,7 @@ export type CanonicalItemFilters = {
 };
 
 const LIST_COLUMNS =
-  "id, normalised_description, normalised_unit, category_division, construction_category, sample_count, project_count, avg_rate, admin_notes, created_at";
+  "id, normalised_description, normalised_unit, category_division, construction_category, sample_count, project_count, avg_rate, admin_notes, created_at, embedding_input_text, embedding_model, embedding_generated_at, embedding_last_error";
 
 export type CanonicalItemListRow = {
   id: string;
@@ -30,7 +32,42 @@ export type CanonicalItemListRow = {
   avg_rate: number | null;
   admin_notes: string | null;
   created_at: string;
+  embedding_input_text: string | null;
+  embedding_model: string | null;
+  embedding_generated_at: string | null;
+  embedding_last_error: string | null;
+  embeddingStatus: EmbeddingStatus;
 };
+
+// embedding_generated_at (not the 1536-float `embedding` column itself) is
+// used as the "has an embedding" signal here — the save path in
+// backfill.ts sets one if and only if it sets the other, and pulling the
+// full vector into every list/detail query would be a lot of payload for a
+// value nothing in the UI actually renders.
+function computeEmbeddingStatus(item: {
+  normalised_description: string | null;
+  normalised_unit: string | null;
+  category_division: string | null;
+  construction_category: string | null;
+  embedding_input_text: string | null;
+  embedding_generated_at: string | null;
+  embedding_last_error: string | null;
+}): EmbeddingStatus {
+  const candidateText = buildEmbeddingInputText({
+    normalisedDescription: item.normalised_description,
+    normalisedUnit: item.normalised_unit,
+    division: item.category_division,
+    category: item.construction_category,
+  });
+  return classifyEmbeddingStatus(
+    {
+      embedding: item.embedding_generated_at,
+      embeddingInputText: item.embedding_input_text,
+      embeddingLastError: item.embedding_last_error,
+    },
+    candidateText,
+  );
+}
 
 /**
  * Admin listing of canonical items — unlike listRateLibraryItems() (Rate
@@ -70,7 +107,8 @@ export async function listCanonicalItems(filters: CanonicalItemFilters, page: nu
     return { items: [] as CanonicalItemListRow[], count: 0, page: safePage, pageSize: CANONICAL_ITEMS_PAGE_SIZE };
   }
 
-  return { items: data ?? [], count: count ?? 0, page: safePage, pageSize: CANONICAL_ITEMS_PAGE_SIZE };
+  const items = (data ?? []).map((item) => ({ ...item, embeddingStatus: computeEmbeddingStatus(item) }));
+  return { items, count: count ?? 0, page: safePage, pageSize: CANONICAL_ITEMS_PAGE_SIZE };
 }
 
 export type CanonicalItemDetail = {
@@ -91,17 +129,22 @@ export type CanonicalItemDetail = {
   stddev_rate: number | null;
   most_recent_rate: number | null;
   most_recent_rate_at: string | null;
+  embedding_input_text: string | null;
+  embedding_model: string | null;
+  embedding_generated_at: string | null;
+  embedding_last_error: string | null;
+  embeddingStatus: EmbeddingStatus;
 };
 
 const DETAIL_COLUMNS =
-  "id, organisation_id, normalised_description, normalised_unit, category_division, construction_category, admin_notes, merged_into_id, sample_count, project_count, avg_rate, median_rate, min_rate, max_rate, stddev_rate, most_recent_rate, most_recent_rate_at";
+  "id, organisation_id, normalised_description, normalised_unit, category_division, construction_category, admin_notes, merged_into_id, sample_count, project_count, avg_rate, median_rate, min_rate, max_rate, stddev_rate, most_recent_rate, most_recent_rate_at, embedding_input_text, embedding_model, embedding_generated_at, embedding_last_error";
 
 export async function getCanonicalItem(id: string): Promise<CanonicalItemDetail | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("rate_library_items").select(DETAIL_COLUMNS).eq("id", id).single();
 
   if (error || !data) return null;
-  return data;
+  return { ...data, embeddingStatus: computeEmbeddingStatus(data) };
 }
 
 export type PossibleDuplicate = {
